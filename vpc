@@ -1,5 +1,4 @@
-# create vpc 
-
+# Create VPC
 resource "aws_vpc" "dev" {
     cidr_block = "10.0.0.0/16"
     tags = {
@@ -7,8 +6,7 @@ resource "aws_vpc" "dev" {
     }
 }
 
-# create subnets
-
+# Create Subnets
 resource "aws_subnet" "Public" {
     vpc_id = aws_vpc.dev.id
     cidr_block = "10.0.0.0/24"
@@ -16,6 +14,7 @@ resource "aws_subnet" "Public" {
       Name = "Public_subnet"
     }
 }
+
 resource "aws_subnet" "Private" {
     vpc_id = aws_vpc.dev.id
     cidr_block = "10.0.1.0/24"
@@ -24,8 +23,7 @@ resource "aws_subnet" "Private" {
     }
 }
 
-# create internet gateway and attach to vpc
-
+# Create Internet Gateway and Attach to VPC
 resource "aws_internet_gateway" "ig" {
     vpc_id = aws_vpc.dev.id
     tags = {
@@ -33,16 +31,17 @@ resource "aws_internet_gateway" "ig" {
     }
 }
 
-# create route table and edit routes to the internet gateway and subnet association to the required subnet
-
+# Create Route Table and Associate with Public Subnet
 resource "aws_route_table" "rt" {
   vpc_id = aws_vpc.dev.id
-  tags = {
-    Name = "MY-RT"
-  }
-  route = {
+
+  route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.ig.id
+  }
+
+  tags = {
+    Name = "MY-RT"
   }
 }
 
@@ -51,8 +50,7 @@ resource "aws_route_table_association" "sb" {
     subnet_id = aws_subnet.Public.id
 }
 
-# create security group <inbound rules: ssh 20 http 80 / all traffic>
-
+# Create Security Group (SSH, HTTP, and Egress Rules)
 resource "aws_security_group" "sg" {
     name = "my-sg"
     description = "allow access"
@@ -60,6 +58,7 @@ resource "aws_security_group" "sg" {
     tags = {
       Name = "SG"
     }
+
     ingress {
         description = "http"
         from_port = 80
@@ -69,52 +68,45 @@ resource "aws_security_group" "sg" {
     }
     
     ingress {
-    description      = "ssh"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "TCP"
-    cidr_blocks      = ["0.0.0.0/0"]
-  }
+        description = "ssh"
+        from_port = 22
+        to_port = 22
+        protocol = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
     
-egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    
-  }
-  
+    egress {
+        from_port = 0
+        to_port = 0
+        protocol = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
 }
-# create instances
 
-#public server
+# Create EC2 Instances
 
+# Public Server
 resource "aws_instance" "public" {
     ami = "ami-05fa46471b02db0ce"
     instance_type = "t2.micro"
     key_name = "demo"
-    subnet_id = aws_subnet.public.id
-    vpc_security_group_ids = [ aws_security_group.sg.id]
+    subnet_id = aws_subnet.Public.id
+    vpc_security_group_ids = [aws_security_group.sg.id]
     associate_public_ip_address = true
     tags = {
       Name = "dev_ec2"
     }
-  
 }
 
-#private server
-
+# Private Server
 resource "aws_instance" "private" {
     ami = "ami-05fa46471b02db0ce"
     instance_type = "t2.micro"
     key_name = "demo"
-    subnet_id = aws_subnet.private.id
-    vpc_security_group_ids = [ aws_security_group.sg.id]
+    subnet_id = aws_subnet.Private.id
+    vpc_security_group_ids = [aws_security_group.sg.id]
     associate_public_ip_address = false
     tags = {
       Name = "dev_ec2"
     }
-  
 }
-
-
